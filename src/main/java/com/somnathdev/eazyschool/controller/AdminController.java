@@ -9,6 +9,7 @@ import com.somnathdev.eazyschool.repository.PersonRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.hibernate.annotations.GenericGenerator;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.Banner;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -129,5 +130,40 @@ public class AdminController {
         coursesRepository.save(courses);
         return mav;
 
+    }
+
+    @GetMapping("/viewStudents")
+    public ModelAndView viewStudents(Model model,@RequestParam int id,
+            @RequestParam(value = "error", required=false) String error,HttpSession session)
+    {
+        String errorMsg=null;
+        ModelAndView mav = new ModelAndView("course_student.html");
+        Optional<Courses> courses = coursesRepository.findById(id);
+        mav.addObject("courses",courses.get());
+        mav.addObject("person",new Person());
+        session.setAttribute("courses",courses.get());
+        if(error!=null) {
+         errorMsg="Invalid Email Entered!!";
+         mav.addObject("errorMessage",errorMsg);
+        }
+        return mav;
+    }
+
+
+    @PostMapping("/addStudentToCourse")
+    public ModelAndView addStudentToCourse(Model model,@ModelAttribute("person") Person person,HttpSession httpSession)
+    {
+        ModelAndView modelAndView = new ModelAndView();
+        Courses courses = (Courses) httpSession.getAttribute("courses");
+        Person personEntity = personRepository.readByEmail(person.getEmail());
+        if (personEntity==null || !(personEntity.getPersonId()>0)){
+            modelAndView.setViewName("redirect:/admin/viewStudents?id="+courses.getCourseId()+"&error=true");
+            return  modelAndView;
+        }
+        personEntity.getCourses().add(courses);
+        courses.getPerson().add(personEntity);
+        httpSession.setAttribute("courses",courses);
+        modelAndView.setViewName("redirect:/admin/viewStudents?id="+courses.getCourseId());
+        return modelAndView;
     }
 }
